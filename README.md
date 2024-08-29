@@ -76,8 +76,33 @@
 ## Long-Context
 
 
+- 相对偏置
+	- ALIBI [Train Short, Test Long: Attention with Linear Biases Enables Input Length Extrapolation](https://arxiv.org/abs/2108.12409), ICLR22
+	  > 在Softmax之前减去一个非负矩阵，将Attention的计算从$q_{m} k_{n}$改为 $q_{m} k_{n}-\lambda|m-n|$，其中λ>0是超参数，每个head设置不同的值
+- base 缩放
+	- Position Interpolation (PI) [Extending Context Window of Large Language Models via Positional Interpolation](https://arxiv.org/abs/2306.15595)
+	  > 位置编码base（默认为10000）乘上因子$L_{train}/L_{test}$
+	- Dynamic-NTK  [Reddit](www.reddit.com/r/LocalLLaMA/comments/14lz7j5/ntkaware_scaled_rope_allows_llama_models_to_have/)
+	  > PI的缩放是平等对待地对待所有维度，即高频旋转角度缩小的倍数和低频旋转角度缩小的倍数是一样的。 NTK-Aware Scaled RoPE 可以理解为对低频内插，高频外插
+	- [YaRN: Efficient Context Window Extension of Large Language Models](https://openreview.net/forum?id=wHBfxhZu1u), ICLR 2024
+	  > 1. 如果维度i对应的波长$$\lambda_i$$远小于文本长度，不进行内插只外推
+	  2. 如果维度i对应的波长$$\lambda_i$$大于文本长度，进行内插
+	  3. 对于中间部分，采用NTK-Aware Scaled RoPE的思路
+	- [LongRoPE: Extending LLM Context Window Beyond 2 Million Tokens](https://openreview.net/forum?id=ONOtpXLqqw), ICML 2024
+	  > RoPE 的不同维度存在不均衡性, 用进化算法搜索非均匀位置插值
+- 分块 / chunk
+	- MRC / Long Text Match 里边有很多
+	- [LongLoRA: Efficient Fine-tuning of Long-Context Large Language Models](https://arxiv.org/abs/2309.12307)
+	  >  以一个固定长度划分多个窗口，每个窗口内部做 Attention, 把分窗口注意力的 Attention mask 向下移动半个窗口的长度，让上面提到的不同的窗口之间进行交互; 并且LORA增加对LayerNorm 和 Embedding 的微调
+	- [LongHeads: Multi-Head Attention is Secretly a Long Context Processor](https://arxiv.org/abs/2402.10685)
+	  > 认为不同的注意力头所关注的是 context 中的不同部分，将长 context 分解成多个块，让每个注意力头分别关注重要的块，并保证分配给每个注意力头的那些块包含的 tokens 数少于预训练的窗口大小
+	- [Hierarchical Context Merging: Better Long Context Understanding for Pre-trained LLMs](https://openreview.net/forum?id=ulaUJFd96G), ICLR24
+	  >  将长文本输入分割成多个小块（chunks）, 层次化合并策略，通过在不同的transformer层级逐步合并相邻的块，使得信息可以在块之间传递。
+	- [Training-Free Long-Context Scaling of Large Language Models](https://arxiv.org/abs/2402.17463), ICML 2024
+	  >  按块进行旋转编码（RoPE），提出一种块内，块间以及相邻块Attention的DCA策略
+	- [LLM Maybe LongLM: SelfExtend LLM Context Window Without Tuning](https://openreview.net/forum?id=nkOMLBIiI7), ICML2024
+	  > 利用 “grouped attention”  距离近的用原来的attention，远的话用grouped attention
 
-  
   
 
 
