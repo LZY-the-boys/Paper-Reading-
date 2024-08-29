@@ -75,6 +75,18 @@
 
 ## KV-Cache
 
+- Token Merging （Token Pooling, Token Pruning）
+	- insights：key states exhibit high similarity at the token level within a single sequence
+	- [CaM: Cache Merging for Memory-efficient LLMs Inference](https://openreview.net/pdf?id=LCTmppB165), ICML 2024. 
+	  > 不是直接将其需要逐出的token丢弃，而是通过merge来利用逐出的元素  
+	  paper里边理论证明好处在于对attention的输出扰动更小。  
+	- [Dynamic Memory Compression: Retrofitting LLMs for Accelerated Inference](https://arxiv.org/abs/2403.09636), ICML 2024
+	  > 将每次新进入的KV merge， 对于每个新来的kv，决定是merge还是append  
+	- [LOOK-M: Look-Once Optimization in KV Cache for Efficient Multimodal Long-Context Inference](https://openreview.net/pdf/d775ca7f5d0bfad0e56d5e710a3953555ccaabda.pdf)
+	  > 应用在MLLM上 (输入是interleaved的图文对)，文本不操作，对图像token merge 因为在多模态中文本的相对图片具有更高的attention score，提出4种merge策略：Max，Mean，Pivotal ，weighted  
+	- [KVMerger: Model Tells You Where to Merge: Adaptive KV Cache Merging for LLMs on Long-Context Tasks](https://arxiv.org/abs/2407.08454)
+	  > 认为之前的工作在identity merge set上存在缺陷，发现KV cache的压缩比率在不同样本上高度一致(模型固有特性)，因此可以直接用layer-wise的cos-sim静态计算压缩比率；在LLMs的前两层和最后一层注意力得分分布更加均匀，意味着大多数键状态都很重要，应该不merging以避免引入显著的噪声； Gaussian kernel weighted merging algorithm  
+
 ## Long-Context
 
 ## Image-Tokenizer
