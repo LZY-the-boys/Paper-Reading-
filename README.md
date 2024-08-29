@@ -85,9 +85,7 @@
 	- Dynamic-NTK  [Reddit](www.reddit.com/r/LocalLLaMA/comments/14lz7j5/ntkaware_scaled_rope_allows_llama_models_to_have/)
 	  > PI的缩放是平等对待地对待所有维度，即高频旋转角度缩小的倍数和低频旋转角度缩小的倍数是一样的。 NTK-Aware Scaled RoPE 可以理解为对低频内插，高频外插
 	- [YaRN: Efficient Context Window Extension of Large Language Models](https://openreview.net/forum?id=wHBfxhZu1u), ICLR 2024
-	  > 1. 如果维度i对应的波长$$\lambda_i$$远小于文本长度，不进行内插只外推
-	  2. 如果维度i对应的波长$$\lambda_i$$大于文本长度，进行内插
-	  3. 对于中间部分，采用NTK-Aware Scaled RoPE的思路
+	  > 1. 如果维度i对应的波长$$\lambda_i$$远小于文本长度，不进行内插只外推 2. 如果维度i对应的波长$$\lambda_i$$大于文本长度，进行内插 3. 对于中间部分，采用NTK-Aware Scaled RoPE的思路
 	- [LongRoPE: Extending LLM Context Window Beyond 2 Million Tokens](https://openreview.net/forum?id=ONOtpXLqqw), ICML 2024
 	  > RoPE 的不同维度存在不均衡性, 用进化算法搜索非均匀位置插值
 - 分块 / chunk
@@ -103,12 +101,10 @@
 	- [LLM Maybe LongLM: SelfExtend LLM Context Window Without Tuning](https://openreview.net/forum?id=nkOMLBIiI7), ICML2024
 	  > 利用 “grouped attention”  距离近的用原来的attention，远的话用grouped attention
 
-  
-
-
 
 ## KV-Cache
 
+- Survey: https://github.com/October2001/Awesome-KV-Cache-Compression
 - KV Cache Quantization
 	- Coupled Quantization (Zhang et al., 2024b). and KIVI (Zirui Liu et al., 2023), have demonstrated that KV cache can be quantized to 1-bit or 2-bit precision while preserving performance.
 	- [IntactKV: Improving Large Language Model Quantization by Keeping Pivot Tokens Intact](https://arxiv.org/abs/2403.01241)
@@ -159,7 +155,9 @@
 	- CLA [Reducing Transformer Key-Value Cache Size with Cross-Layer Attention](https://arxiv.org/abs/2405.12981)
 	  > 相邻layer 共享KV cache  
 
-## Long-Context
+## Model-Merging
+
+- survey: https://github.com/EnnengYang/Awesome-Model-Merging-Methods-Theories-Applications
 
 ## Image-Tokenizer
 
