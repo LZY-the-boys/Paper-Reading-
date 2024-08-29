@@ -75,8 +75,36 @@
 
 ## KV-Cache
 
-- Token Merging （Token Pooling, Token Pruning）
-	- insights：key states exhibit high similarity at the token level within a single sequence
+- KV Cache Quantization
+	- Coupled Quantization (Zhang et al., 2024b). and KIVI (Zirui Liu et al., 2023), have demonstrated that KV cache can be quantized to 1-bit or 2-bit precision while preserving performance.
+- KV Cache Low-Rank
+	- [Effectively Compress KV Heads for LLM](https://arxiv.org/abs/2406.07056)
+	  > (1) only 25% of the highest singular values need to be retained to get most of the energy.   
+	  (2) RoPE generally reduces the rank of key cache  
+	  需要数据并且在激活值上进行SVD的方法称为SVD-a，直接在权重矩阵上做SVD称为SVD-w  
+- KV Cache Eviction
+	- insights: attention本身具有的稀疏性, 50%的 KV cache贡献了0.9以上的 Attention Scores
+	- Scissorhands (Liu et al., 2023b)
+	  keeps a fixed KV size budget and replies on the Persistence of Importance hypothesis to evict key  
+	  and value states for non-important tokens  
+	- [H2O: Heavy-Hitter Oracle for Efficient Generative Inference of Large Language Models](https://proceedings.neurips.cc/paper_files/paper/2023/file/6ceefa7b15572587b78ecfcebb2827f8-Paper-Conference.pdf)，NeurIPS 2023
+	  > 20%缓存接近于全量KV cache的效果;   
+	  utilizes aggregated attention scores to determine so called “heavy hitters”/ important tokens  
+	- StreamingLLM [Efficient Streaming Language Models with Attention Sinks](http://arxiv.org/abs/2309.17453), ICLR 2024
+	  > attention sink + the recent window tokens is pivotal to maintain LLM’s performance  
+	- FastGen Ge et al. (2024)  .
+	  > attention sinks also occurs in the middle of the sentences, choose the most  
+	  appropriate compression strategy for each heads with different attention distribution patterns  
+	- VATP [Attention Score is not All You Need for Token Importance Indicator in KV Cache Reduction: Value Also Matters](https://arxiv.org/abs/2406.12335)
+	  > attention sink tokens 对应的值向量的 $l_1$ norm比其他小很多, 基于attention score 和值向量的L1范数的乘积来挑选KV cache  
+	- [Keyformer: KV Cache reduction through key tokens selection for Efficient Generative Inference](https://arxiv.org/pdf/2403.09054) 
+	  > H2O 改进 使用Gumbel分布引入噪声以调整未归一化logits，从而解决由于丢弃token而导致的uneven score distribution 问题。  
+- KV Cache Merging （Token Merging, Token Pooling, Token Pruning）
+	- insights：
+		- directly eviction may accidentally and permanently remove important tokens;
+		- key states exhibit high similarity at the token level within a single sequence
+	- token merging is well-established in computer vision (CV)
+	  (Zeng et al., 2022) (Bolya et al., 2023) (Kim et al., 2023) (Zhang et al., 2024a),  
 	- [CaM: Cache Merging for Memory-efficient LLMs Inference](https://openreview.net/pdf?id=LCTmppB165), ICML 2024. 
 	  > 不是直接将其需要逐出的token丢弃，而是通过merge来利用逐出的元素  
 	  paper里边理论证明好处在于对attention的输出扰动更小。  
@@ -86,6 +114,9 @@
 	  > 应用在MLLM上 (输入是interleaved的图文对)，文本不操作，对图像token merge 因为在多模态中文本的相对图片具有更高的attention score，提出4种merge策略：Max，Mean，Pivotal ，weighted  
 	- [KVMerger: Model Tells You Where to Merge: Adaptive KV Cache Merging for LLMs on Long-Context Tasks](https://arxiv.org/abs/2407.08454)
 	  > 认为之前的工作在identity merge set上存在缺陷，发现KV cache的压缩比率在不同样本上高度一致(模型固有特性)，因此可以直接用layer-wise的cos-sim静态计算压缩比率；在LLMs的前两层和最后一层注意力得分分布更加均匀，意味着大多数键状态都很重要，应该不merging以避免引入显著的噪声； Gaussian kernel weighted merging algorithm  
+- KV Cache CrossAttn
+	- CLA [Reducing Transformer Key-Value Cache Size with Cross-Layer Attention](https://arxiv.org/abs/2405.12981)
+	  > 相邻layer 共享KV cache  
 
 ## Long-Context
 
