@@ -73,7 +73,12 @@
 - [NAACL24] REST: Retrieval-Based Speculative Decoding [[paper]](https://arxiv.org/pdf/2311.08252)
 - Graph-Structured Speculative Decoding [[paper]](https://arxiv.org/pdf/2407.16207)
 
-## Position-Embedding
+## Long-Context
+
+
+
+  
+  
 
 
 
@@ -81,11 +86,18 @@
 
 - KV Cache Quantization
 	- Coupled Quantization (Zhang et al., 2024b). and KIVI (Zirui Liu et al., 2023), have demonstrated that KV cache can be quantized to 1-bit or 2-bit precision while preserving performance.
+	- [IntactKV: Improving Large Language Model Quantization by Keeping Pivot Tokens Intact](https://arxiv.org/abs/2403.01241)
+	  > Pivot tokens 作为重要的前缀，不应该进行量化  
 - KV Cache Low-Rank
+	- insights: 认为KV cache是低秩的
 	- [Effectively Compress KV Heads for LLM](https://arxiv.org/abs/2406.07056)
 	  > (1) only 25% of the highest singular values need to be retained to get most of the energy.   
 	  (2) RoPE generally reduces the rank of key cache  
 	  需要数据并且在激活值上进行SVD的方法称为SVD-a，直接在权重矩阵上做SVD称为SVD-w  
+	- LESS: [Get More with LESS: Synthesizing Recurrence with KV Cache Compression for Efficient LLM Inference](https://arxiv.org/abs/2402.09398)
+	  > 用低秩矩阵来拟合 kv cache token dropping 带来的误差，attention map 的误差矩阵往往是低秩的，因此可以类似 Linear Attention 的做法，把 softmax 中表示相似度的指数部分，更换为分别对 qk 进行变换然后做内积  
+	- [GEAR: An Efficient KV Cache Compression Recipe for Near-Lossless Generative Inference of LLM](https://arxiv.org/abs/2403.05527)
+	  > 用低秩矩阵拟合kv cache量化带来的误差，因为量化导致的误差矩阵秩比较低，可以用两个矩阵拟合  
 - KV Cache Eviction
 	- insights: attention本身具有的稀疏性, 50%的 KV cache贡献了0.9以上的 Attention Scores
 	- Scissorhands (Liu et al., 2023b)
@@ -96,9 +108,9 @@
 	  utilizes aggregated attention scores to determine so called “heavy hitters”/ important tokens  
 	- StreamingLLM [Efficient Streaming Language Models with Attention Sinks](http://arxiv.org/abs/2309.17453), ICLR 2024
 	  > attention sink + the recent window tokens is pivotal to maintain LLM’s performance  
-	- FastGen Ge et al. (2024)  .
-	  > attention sinks also occurs in the middle of the sentences, choose the most  
-	  appropriate compression strategy for each heads with different attention distribution patterns  
+	- FastGen [Model Tells You What to Discard: Adaptive KV Cache Compression for LLMs](https://arxiv.org/abs/2310.01801)
+	> attention sinks also occurs in the middle of the sentences
+	认为注意力头在不同位置下的 attention map 结构是相对稳定的，所以可以通过输入的 prompt 来确定注意力头的全局模式
 	- VATP [Attention Score is not All You Need for Token Importance Indicator in KV Cache Reduction: Value Also Matters](https://arxiv.org/abs/2406.12335)
 	  > attention sink tokens 对应的值向量的 $l_1$ norm比其他小很多, 基于attention score 和值向量的L1范数的乘积来挑选KV cache  
 	- [Keyformer: KV Cache reduction through key tokens selection for Efficient Generative Inference](https://arxiv.org/pdf/2403.09054) 
