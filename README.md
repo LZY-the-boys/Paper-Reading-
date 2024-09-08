@@ -161,3 +161,11 @@
 
 ## Image-Tokenizer
 
+
+## Squence Parallel
+- data/tensor/zero/expert/pipeline parallelism.
+- Sequence Parallelism of Megatron-LM:  this form of Sequence Parallelism cannot be used independently without tensor parallelism
+- [Deepspeed-Ulysses](https://arxiv.org/abs/2309.14509) P2P communication
+- [Ring-Attention](https://arxiv.org/pdf/2310.01889) a distributed version of FlashAttention, All2All communication;
+	- Context Parallel https://docs.nvidia.com/megatron-core/developer-guide/latest/api-guide/context_parallel.html
+- [USP-Attention](https://arxiv.org/pdf/2405.07719) 
