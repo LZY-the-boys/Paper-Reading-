@@ -1,5 +1,65 @@
 # Paper-Reading
 
+## RLHF
+
+### PRM 
+- Deepmind PAV： https://arxiv.org/pdf/2410.08146
+  - 只做了math
+  - 有效的步骤奖励应该衡量“进展”，即在执行某个步骤之前和之后，产生正确响应的可能性的变化，恰好对应强化学习中advantage的概念
+  - 所以，方法就是对每个step设法标注（state, action, advantage）用这个数据训练一个PRM（regression-style）
+  - advantage的计算方式是，我们对当前state进行mcts搜索，采样一堆final output，算准确率,可以计算return，然后用return计算V和Q， 用bellman equation计算advantage A=Q- V
+  - 但是这个paper的insight是说，这个advantage我们不能直接用原始模型/策略计算(base policy, \pi), 而是要引入一个新的prover policy(\mu), 用他采样，选择的条件和理由：
+    1. 多样化数据来源：不同于基础策略的数据可以提供更多的多样性和不同的视角，从而丰富训练数据集。这有助于PRM学会更广泛的情况，而不仅仅局限于基础策略所能覆盖的情形。
+    2. 补充优势：证明者策略（prover policy）通常是设计来补充基础策略的不足之处。如果基础策略在某些地方不够强，证明者策略可以帮助识别这些弱点，并提供额外的信息，使得过程奖励模型能够更好地评估每一步的影响。
+    3. 减少过拟合：使用来自不同策略的数据可以减少模型在训练过程中过度拟合到特定策略的行为。通过引入不同策略产生的数据，PRM可以学习到更为泛化的模式，而不是仅仅优化特定策略的输出。
+    4. 提高鲁棒性：通过让PRM接触到不同策略产生的轨迹，可以提高其鲁棒性，使其在面对多种不同的输入时都能给出合理的评估，从而在实际应用中表现更好。
+    5. 理论支持：论文中的理论分析表明，选择好的证明者策略可以确保对基础策略进行非平凡的改进。即使是弱的证明者策略也可以显著改善更强的基础策略，这是因为它们能够提供与基础策略不同的优势，从而帮助基础策略更好地学习。
+    6.  证明者 \(\mu\) 既不能过于强大，也不能过于薄弱，否则它所提供的过程奖励将无法有效地指导基础策略 \(\pi\) 的改进。
+	      1. 如果证明者 \(\mu\) 与基础策略 \(\pi\) 相同，那么产生的过程奖励将等同于只优化最终结果的情况，这对于改进策略是没有帮助的。
+	      2. 如果证明者 \(\mu\) 太弱，则它可能会面临与基础策略 \(\pi\) 相似的问题，即无法提供有效的反馈。
+	      3. 相反，如果证明者 \(\mu\) 非常强大，那么即使在基础策略 \(\pi\) 执行无关紧要的步骤时，强大的证明者 \(\mu\) 也能成功地从这些状态中找到解决方案，这导致过程奖励 \(A_{\mu}\) 接近于零，因为它没有区分哪些步骤有助于解决问题。
+	      4. 因此，论文指出，有效的证明者策略应该是那些能够补充基础策略 \(\pi\) 的策略，即能够有效地区分由基础策略产生的不同步骤，并提供与基础策略对齐的步骤级优势。
+  - 因此，具体实现上，用BoN（N=4）作为prover policy，用prover policy sample出来的结果计算advantage，标注数据，训练prm；在RL训练过程中，使用的reward是 Q \pi + Advantage \mu (用prm预测)
+  - Special cases: 
+    - Self-explore to avoid the pit: Improving the reasoning capabilities of language models with fine-grained rewards.
+    - Rl on incorrect synthetic data scales the efficiency of llm math reasoning by eight-fold.
+    - Vineppo: Unlocking rl potential for llm reasoning through refined credit assignment
+- Q-ranking https://arxiv.org/pdf/2410.11287
+  - 只做了math
+  - 推理中正确的和错误的步骤不同，应该对应不同的score, 因此我们可以先定义一种顺序，第一步错< ... < 第N步错< 第1步对 < ... < 第N步对，然后会有一堆排序分数，用ranking loss训练prm
+  - 证明这个顺序理论，用的dpo q-function理论，
+- MATH-Shepherd: https://arxiv.org/pdf/2312.08935
+  - 用cross entropy训练PRM
+    - HE假设只要一个步骤能够到达正确答案，它就是一个好步骤。 
+    - SE则将步骤的质量视为它达到正确答案的频率。
+  - used automated supervision to annotate steps with 𝑄 values under the base policy, i.e., the PRMs score a step with the likelihood of future success, when continuing to sample from the step.
+- https://arxiv.org/pdf/2410.13121， https://arxiv.org/pdf/2410.13246
+  - 目前PRM很难推广到其他领域
+  - 在其他领域上的PRM，利用programs that can be executed over the scene graph object to verify each QA pair, 和 atomic fact，来做每步的验证
+- DPO - Q-function: https://arxiv.org/pdf/2404.12358v2
+  	- under the token level formulation, classical search-based algorithms, such as MCTS, which have recently been applied to the language generation space, are equivalent to likelihood-based search on a DPO policy
+- Generative Verifier https://arxiv.org/pdf/2408.15240
+- PRM-version-of-BoN https://arxiv.org/pdf/2408.03314
+  	- test-time beam search
+- STAR
+  - 目前，让语言模型生成推理过程（即“rationales”）的方法主要有两种：一种是构建包含推理过程的大规模数据集进行微调，这种方法成本高昂且不现实；另一种是使用少量示例（few-shot）进行上下文学习，但这种方法的性能通常远低于直接预测答案的模型。STaR技术通过迭代利用少量推理示例和大量无推理数据集，引导模型逐步提升进行更复杂推理的能力。具体来说，STaR方法包括以下几个步骤：
+	    1. 使用少量推理示例引导语言模型生成多个问题的推理过程。
+	    2. 对于模型生成的错误答案，通过提供正确答案来生成新的推理过程（称为“rationalization”）。
+	    3. 在所有最终生成正确答案的推理上微调模型。
+	    4. 重复上述过程，每次都使用改进后的模型来生成下一轮的训练数据。
+- Quiter-StAR
+  - 修改attn mask 并行采样 生成多个<st>（rationale）<et>，
+  - 引入“混合头”（mixing head），一个浅层的多层感知机（MLP），用于生成权重，决定在给定rationale后，模型应该在多大程度上结合rationale生成的下一个标记预测概率和基础语言模型生成的概率。这个是在hidden上做的，不是文本分类器
+  - RL We thus define the reward rj for each rationale Tj as the difference between p talk j:j+ntrue and the average across rationales for that token
+- V-StaR
+  - 现有的自我改进方法（如STaR）在训练过程中只使用正确的解决方案，而忽略了大量生成的错误解决方案。这些错误解决方案可能包含有价值的信息，有助于模型学习并改进其推理过程。
+  - 那么怎么利用错误方案呢，可以使用DPO（Direct Preference Optimization）方法直接用于训练验证器
+  - combines the approach of STaR  with a DPO trained verifer. At inference time, the STaR model produces several candidate reasoning chains (plans) which are ranked by the DPO verifer likelihood
+- PRM-800k https://arxiv.org/abs/2305.20050
+  - 第一次提出 结果监督（outcome supervision）ORM 和过程监督（process supervision）PRM概念
+  - 直接人工标注了一个包含800,000个step-wise的人类反馈标签的完整数据集（PRM800K），没有开源
+- MCTS 流程理解： https://mp.weixin.qq.com/s/BrLxo_p07zX6AqmGtUoVmw
+
 ## Data-Mining
 
 - D-CPT Law: Domain-specific Continual Pre-Training Scaling Law
