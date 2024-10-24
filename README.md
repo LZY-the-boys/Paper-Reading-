@@ -116,7 +116,8 @@
   - QLoRA: matched full finetuning MMLU (Hendrycks et al., 2020) performance, optimized LoRA configurations perform as well as full finetuning, and that performance is governed by choice of target modules but not rank.
   - DoRA: shows that LoRA is sensitive to ranks. It is likely that some of these discrepancies
     are due to differences in finetuning datasets and evaluations.  
-
+- 预训练
+	- SwitchLoRA：构造min(m,n)个候选的行向量和列向量，然后每步随机取一个插到A和B上训练，保证训练满秩
 ## Decoding
 
 
