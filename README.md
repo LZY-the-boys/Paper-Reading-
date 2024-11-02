@@ -222,6 +222,17 @@
 
 ## Image-Tokenizer
 
+## Interpretable
+
+- [ACL25] https://arxiv.org/pdf/2410.23743  正文8页但是附录有123页
+	- **Nuclear Norm** (the ℓ1 norm of singular values) to represent the characteristics for the gradient of each layer $$s_{X,i} = \sum |\sigma_j|, X \in \{QKVO\}, i \in [0, N-1]$$ , N is layernum, QKVO is attention matrix
+	- **mean absolute differences (MAD)** is defined as $$\mathrm{MAD}_{s_X}=\frac{1}{N-1} \sum_{i=1}^{N-1}\left|s_{X, i+1}-s_{X, i}\right|$$
+	- None CoT / Simplified CoT / Detailed CoT (Slow vs. Fast Thinking)
+		 - The large scale of MAD indicates that the response distributions that LLMs are going to learn have large discrepancies with what it has learned from the pretraining phase, which might harm the performances of the original pre-trained models
+		- A consistent decrease in MAD is observed in all layers when LLMs are trained to produce more detailed reasoning paths (slow thinking)
+		- LLMs can to some extent identify that the responses to be learned have potential conflicts
+		  with their internal knowledge, thus requiring more energy to adapt to the new nonsense responses.
+
 
 ## Squence Parallel
 - data/tensor/zero/expert/pipeline parallelism.
