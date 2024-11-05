@@ -1,5 +1,225 @@
 # Paper-Reading
 
+## Image2Video
+
+- SOTA
+    
+    ![image.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/81e645bc-1e8a-41e9-a2c2-29d1d1d98df5/dc652825-7ee1-449a-9d4d-4cc8abbf4cf1/image.png)
+    
+    ![image.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/81e645bc-1e8a-41e9-a2c2-29d1d1d98df5/bf75ea13-0154-4028-87cc-5f85b3f666b6/image.png)
+    
+    - [T2V-Turbo-v2](https://arxiv.org/pdf/2410.05677)
+        - VidGen-1M (VG), OpenVid-1M (OV), WebVid-10M (WV),
+            - find that VCM perform best on OV, their method best on VG+WV
+        - motion guidance (MG)
+            - we only apply motion guidance to the first τ percent of the sampling t (Motion Clone)
+    - [Stable-Video-Diffusion](https://arxiv.org/pdf/2311.15127)
+        - 三阶段训练
+            - 2D text-video-pretraining,(直接使用sd2.1)
+            - video pretraining on a large dataset at low resolution,(自己标了LVD，并过滤)
+            - high-resolution video finetuning on a much smaller dataset with higher-quality videos (250k)
+        - 检测视频是否动态： optical flow
+    - [DynamiCrafter](https://arxiv.org/pdf/2310.12190)
+        - 3 stage paradigm：
+            
+            ![image.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/81e645bc-1e8a-41e9-a2c2-29d1d1d98df5/a17b5f66-a8eb-47e9-b9da-9a343020a5fd/image.png)
+            
+            - trained on WebVid10M dataset by sampling 16 frames with dynamic FPS
+            at the resolution of 256 × 256 in a batch
+            - (i) training P  （=query transformer）用的是SD，只做text2image
+                - 模型: P + cross-attn +  Stable-Diffusion-v2.1（SD)
+                学习率：1 × 10^-4
+                批次大小：64
+                训练步数：1000K step （约64M img）
+            - (ii) adapting P to the T2V model 把SD 换成 text2video模型
+                - 模型: P + T2V（replace SD with VideoCrafter）
+                学习率：5 × 10^-5
+                批次大小：64
+                训练步数：30K step （约 1M img）
+            - (iii) joint fine-tuning with VDG. 再加入img条件，转成img2video模型
+                - 模型: 在前两个阶段的基础上，加入image-noise-concat (VDG）进行联合微调。
+                学习率：5 × 10^-5
+                批次大小：64
+                训练步数：100K步 （约 6M img）
+            - Ablation：单看FVD / PIC指标，没有iii是最好的，但是实际生成的时候会存在变化幅度小，变形严重等问题； 没有i会导致收敛非常慢，没有ii容易训练崩溃
+            - 关于
+            
+            fps = frame per second = num of image per second
+            8fps 2s的图片，video length=8*2=16， 表示从视频中提取的帧数
+            frame_stride是提取帧之间的步长，原始视频是24fps，fs=3时就是24/3=8fps
+            
+            video length有更高优先级
+            frame_stride 仅设置最大值，会自动计算实际应该用的值
+            
+            ```python
+            frame_stride = random.randint(self.frame_stride_min, self.frame_stride)
+            required_frame_num = frame_stride * (self.video_length-1) + 1
+            frame_stride=3,video length=16,实际需要视频至少有46帧
+            frame_num = len(video_reader)
+            if frame_num < required_frame_num:
+                ## drop extra samples if fixed fps is required
+                if self.fixed_fps is not None and frame_num < required_frame_num * 0.5:
+                    index += 1
+                    continue
+                else:
+                    frame_stride = frame_num // self.video_length
+                    required_frame_num = frame_stride * (self.video_length-1) + 1
+            ```
+            
+            - Motion Ctrl： 专门标注动态/运动信息 https://huggingface.co/datasets/Doubiiu/webvid10m_motion/blob/main/webvid10m_motion.csv （2.57M）
+                - 过滤数据：从数据集中过滤掉包含较大相机移动、较差的字幕-视频对齐（caption-video alignment）以及图形/CGI内容的数据。这一步是为了确保数据集中只包含那些具有真实动态场景的视频，避免因特效或相机移动等因素导致的误判。
+                - 生成动态置信度和动态描述：使用GPT4模型来生成动态置信度（dynamic confidence）、动态描述（dynamic wording）以及动态场景的类别（category）。
+                动态置信度表示字幕描述动态场景的程度，动态描述则是具体的动作描述，如“人做俯卧撑”，而类别则是对该动态场景的分类，如人类（human）。
+                指令说明：
+                用户指令要求GPT4模型检查字幕是否描述了视频中的动态场景，例如人类或动物的动作等。
+                输出动态置信度，从0到100表示置信度等级，0表示最低置信度，100表示最高置信度。
+                输出动态描述，如“人做俯卧撑”，以及该动态场景的类别。
+                - 构建的数据集包含大约**257万条字幕-视频对。**
+                发现动态置信度为40时，与人类判断最为一致。
+    - [Vchitect2.0](https://vchitect.intern-ai.org.cn/#section1) Coming Soon
+    - Venhancer
+        - 自己收集的 We collect around 350k high-quality and high-resolution video clips from the Internet to constitute our training set
+    - Vchitect1.0 [LaVie](https://arxiv.org/pdf/2309.15103)
+        - Vimeo25M 未公开
+    - [meta] [Mar-Video](https://arxiv.org/pdf/2410.20280)
+        - 相比mar而言，是把patch换成了frame
+        - 和普通的I2V模型不同，MARDini不直接使用img作为condition，而是引入low resolution和high resolution video的双路输入，对low resolution提取特征作为condition，在high resolution上diffusion
+        
+        ![image.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/81e645bc-1e8a-41e9-a2c2-29d1d1d98df5/2bae166e-d37f-4f7a-8d35-e308916ef49c/image.png)
+        
+        - (重型1.3B) MAR进行时间规划（temporal planning）和（轻量级 288M）DiffusionModel进行空间生成 （spatial ）
+            - MAR规划模型**掩码标记**低分辨率的输入帧，随机采样K'帧替换成[MASK], 生成规划信号z_cond
+            - 而DM生成模型使用z_cond来通过**掩码标记**扩散去噪产生高分辨率帧，
+            对K'帧进行采样并添加噪声，生成被掩码的帧[NOISE]，而保留其余的K - K'参考帧[REF], G(Z_noise,t, Z_cond)
+            - 变静态问题： 为了处理[REF]和[NOISE]集成到一个序列中导致的训练不稳定性，引入了Identity Attention如右
+        
+        ![image.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/81e645bc-1e8a-41e9-a2c2-29d1d1d98df5/6e478e82-422c-4750-ae8f-99ffee8386bd/image.png)
+        
+        - 训练三阶段
+            - 分别训练MAR和DM，使用掩码扩散损失
+            - 在简单的**视频插值**任务上联合训练模型，只使用掩码扩散损失
+            - 通过逐渐减少保留的参考帧数量，进一步训练模型，使其能够联合学习视频插值和**图像到视频生成**任务
+        
+        ![image.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/81e645bc-1e8a-41e9-a2c2-29d1d1d98df5/cbb51232-cf91-4491-a104-6060abbbd790/image.png)
+        
+    - [NIPS24][I2V模型SFT静止问题] [Identifying and Solving Conditional Image Leakage in Image-to-Video Diffusion Model](https://arxiv.org/pdf/2406.15735)   https://github.com/thu-ml/cond-image-leakage
+        - 认为SFT后I2V模型趋向于静止是因为条件图像泄露（Conditional Image Leakage, CIL）在较大的时间步骤上过度依赖条件图像，而忽略了从带噪声的输入中预测干净视频的关键任务。这导致生成的视频缺乏动态和生动的运动
+            
+            ![image.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/81e645bc-1e8a-41e9-a2c2-29d1d1d98df5/e2069e52-6d7b-4ebf-957c-fc10c4444921/image.png)
+            
+        - **inference strategy:**
+            - 直观的，在加噪多的地方，模型会更依赖conditional img. 所以我们首先可以从比较小的时间步（加噪少）开始采样，本来T=1000，现在用800
+            - **Analytic Noise Initialization (Analytic-Init)** 由于现在T变小了，需要调整一下采样的mu和sigma避免降低图像质量，用最小化KL散度原始T在某t的分布和现在t的分布可以推导
+        - **training strategy:**
+            - 直观的，我们应该对conditional image(y0)加噪, 但是存在一个content consistency和leakage的tradeoff，这里的想法是，在大时间步我们应该对y0多加noise，在小时间步应该少加保证content的consistency，提了一种TimeNoise策略，inference的时候还是固定的noise
+- Open-Domain Video-Generation Dataset
+    
+    ![image.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/81e645bc-1e8a-41e9-a2c2-29d1d1d98df5/e3dafd0c-b48c-4ee7-a2ee-f1aff60d59d8/image.png)
+    
+    ![image.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/81e645bc-1e8a-41e9-a2c2-29d1d1d98df5/7b2b9436-bbe9-4675-bacb-b71edf93d632/image.png)
+    
+    - [ICCV 2021] [webvid10M](https://arxiv.org/pdf/2104.00650)
+    - [**InternVid**](https://arxiv.org/abs/2307.06942)
+    - [CVPR 24] [**Panda-70M**](https://arxiv.org/abs/2406.18522) a curated subset of HDVILA-100M
+    - [ICLR在投] [VIDGEN-1M](https://arxiv.org/pdf/2408.02629)
+    - [NIPS没中ICLR在投] [OpenVid](https://export.arxiv.org/pdf/2407.02371)
+    - [NIPS 2024] [LVD-2M](https://arxiv.org/abs/2410.10816)
+    - [NIPS 2024] [VidProM](https://arxiv.org/pdf/2403.06098) prompt-dataset， video是模型生成的，相当于[ACL23 best paper] DiffusionDB的video版本
+    - [Report 2024] ‣ [2407.11784](https://arxiv.org/pdf/2407.11784)
+- benchmark
+    
+    ![image.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/81e645bc-1e8a-41e9-a2c2-29d1d1d98df5/1efca875-8783-482b-a43f-5ce0b3331368/image.png)
+    
+    - [NIPS 24 spotlight] [ChronoMagic](https://arxiv.org/pdf/2406.18522) benchmark 应该可以当成训练数据集来用
+    - vbench
+        - ‣
+        - imaging_quality用musiq_spaq_ckp
+        - aesthetic_quality用ViT-L-14
+        - background_consistency用ViT-B-32
+        - camera_motion用cotracker2
+        - i2v_subject用dino_vitb16
+- Motion-Control / Guidance
+    - Boosting Camera Motion Control for Video Diffusion Transformers
+    - Cinemo: Consistent and Controllable Image Animation with Motion Diffusion Models
+    - CoCoCo: Improving Text-Guided Video Inpainting for Better Consistency, Controllability and Compatibility
+    - CustomCrafter: Customized Video Generation with Preserving Motion and Concept Composition Abilities
+    - FancyVideo: Towards Dynamic and Consistent Video Generation via Cross-frame Textual Guidance
+    - JVID: Joint Video-Image Diffusion for Visual-Quality and Temporal-Consistency in Video Generation
+    - MotionCtrl: A Unified and Flexible Motion Controller for Video Generation
+    - MotionClone
+    - VMC: Video Motion Customization using Temporal Attention Adaption for Text-to-Video Diffusion Models
+    - [ConsisSR: Delving Deep into Consistency in Diffusion-based Image Super-Resolution](https://arxiv.org/abs/2410.13807)
+    - StreamingT2V: Consistent, Dynamic, and Extendable Long Video Generation from Text
+- Survey
+    - Video Diffusion Models: A Survey
+- Decouple / Attention
+    
+    FreeLong Training-Free Long Video Generation with SpectralBlend Temporal Attention
+    
+    Differential Transformer
+    
+- FrameDependent
+    - the content redundancy and temporal correlations among different frames, so we should apply different noise prior to different frame ?
+    
+    ![image.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/81e645bc-1e8a-41e9-a2c2-29d1d1d98df5/a6f926dd-a534-419b-8934-14477c87f75a/image.png)
+    
+    - 思考：其实很像llm里边的位置衰减，加强（和第一帧的）位置编码信息理论上有用，然后正如长文本场景一样，对long video至关重要
+    - [CVPR24] [PIA](https://arxiv.org/pdf/2312.13964)
+        - the L1 distance between each frame and 1st frame, concat this info with conditional frame
+    - [CVPR23] [VideoFusion](https://arxiv.org/abs/2303.08320)
+        - decomposes the diffusion process using **a shared base noise for each frame and residual noise along the temporal axis**. This noise decomposition is achieved through two co-training networks
+    - [ICLR24] [CMD](https://arxiv.org/pdf/2403.14148)
+        
+        ![image.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/81e645bc-1e8a-41e9-a2c2-29d1d1d98df5/b9cb9a80-b010-4e18-b39e-3490e96bcaaf/image.png)
+        
+        - decompose the diffusion process to motion diffusion and content diffusion
+    - [ICCV23] [PYoCo](https://arxiv.org/pdf/2305.10474)
+        - modify the noise process to preserve the **correlation between different frames**
+        - mixed: noise = ϵshared + ϵind
+        - progressive: noise at frame i is generated by perturbing the noise at frame i − 1
+    - [ICLR24] [SEINE](https://arxiv.org/pdf/2310.20700)
+        - 建模成一个Mask Modeling问题，用类似mlm的方式学习插帧
+    - [ICLR24] [FreeNoise](https://arxiv.org/pdf/2310.15169)
+        - **长视频生成的挑战**：现有的视频生成模型通常在有限的帧数上进行训练，导致在推理阶段无法生成高保真的长视频。这是因为长视频在训练阶段没有得到监督。
+        - **单文本条件限制**：现有的模型仅支持单文本条件，而现实生活中的场景通常需要多文本条件，因为视频内容会随着时间变化。
+        - **[暂时没看懂]** 重新安排一系列噪声以实现长距离相关性，并通过基于窗口的融合对它们进行时间注意力处理,  对固定随机噪声帧序列进行局部洗牌，生成具有内部随机性和长距离相关的噪声帧序列，在与对象形状相关的时间步骤中逐渐注入新的动作
+    - [ICLR24 oral (8 8 8 6)] [$\int$-noise](https://openreview.net/forum?id=pzElnMrgSD) ∫-noise
+        - 一种类似于VAR的层级noise
+        
+        ![image.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/81e645bc-1e8a-41e9-a2c2-29d1d1d98df5/b08c471e-5504-47e2-9814-371178c517b5/image.png)
+        
+        - 背景1；前面那段Borel集可以不看，基本意思是D×D大小的离散噪声图可以视为[0,D]×[0,D]区域上的连续噪声图的积分，同时可以通过逐步细分子像素的方式把D×D离散按2ᵏD×2ᵏD逐渐扩展到连续情况
+        - 背景2；光流图（Optical Flow）是指在连续的两帧图像中，同一物体的像素点在时间上的位移。一个光流图可以表示为一个形状为 `(H, W, 2)` 的张量，其中 `H` 和 `W` 分别是图像的高度和宽度，第三个维度的两个通道分别表示水平和垂直方向的位移。
+            - 可以理解为物体移动解算方法，本文用于求解条件视频所对应的时序映射（变形向量场）${\cal T}$
+        - 时序一致性是指不同帧之间的内容和结构保持一致，主要是有以下几个挑战
+            - LDMs中的噪声样本分辨率较低，主要控制图像的组成和低频结构，而不是高频细节。这限制了噪声扭曲在传递运动信息方面的能力。
+            - 时序一致的图像不一定转化为时序一致的自编码器潜在向量。因此，时序一致的噪声先验在潜在空间中可能是次优的
+            - 传统的噪声采样技术通常两种
+                - 独立地为每一帧生成噪声样本。由于每一帧的噪声样本是独立的，**相邻帧之间的噪声缺乏相关性**，导致视频中可能出现快速频繁的不连续的变化（高频闪烁（high-frequency flickering），如某特征突然出现/消失）；
+                - **固定噪声信号在所有帧中保持不变（fixed noise）**来强制保证相关性，会导致生成的视频中某些纹理或细节在不同帧之间固定不动。（纹理粘连伪影（texture-sticking artifacts），如某种纹理定格在像空间中）
+                - 这些问题难以通过传统的平滑滤波技术（如时间域或空间域的平滑滤波）等后处理技术识别和修正
+        - **∫-噪声表示**：本文提出将离散的噪声样本重新解释为连续噪声场的积分，即每个像素的值不再是离散的噪声值，而是该像素区域内的连续噪声场的积分值。这种重新解释允许在高分辨率下生成噪声样本时保持噪声场的特性，从而在潜在空间中更好地保持时序一致性。
+        - **噪声传输方程**：通过光学流（optical flow）或变形场（deformation field）将前一帧的噪声样本传递到当前帧，同时保持噪声的统计特性。这确保了不同帧之间的噪声相关性，从而在潜在空间中保持时序一致性
+        - 通过从低分辨率噪声样本生成高分辨率噪声样本，可以在保持时序相关性的同时，引入更多的细节信息
+        - 具体步骤
+            - 生成一个高分辨率的高斯噪声图 将高斯噪声图重新解释为一个积分噪声场
+            - 使用现有的optical transport方法 PWC-Net [3] or RAFT [4] 计算相邻帧之间的光流图。也就是逆变形场 $T^{-1}$
+            - **上采样光流图**：使用双三次插值（bicubic interpolation）将低分辨率的光流图上采样到高分辨率  $W(T^{-1}(x))$
+            - **扭曲噪声**：使用上采样后的光流图将噪声从一帧扭曲到另一帧     
+$$
+T_A(W) = \int_{x \in A} \frac{1}{|\nabla T(T^{-1}(x))|^{\frac{1}{2}}} W(T^{-1}(x)) \, dx
+$$
+        - 缺点：
+            - 计算开销
+            
+            ![image.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/81e645bc-1e8a-41e9-a2c2-29d1d1d98df5/71cd23e7-b84f-43cf-8273-043a732c1ebe/image.png)
+            
+            - 隐式假设时间相关的噪声图可以诱导时间连贯的视频编辑结果
+                - 实践中通常成立
+            - 依赖于扭曲场是一个微分同胚（diffeomorphism），而在实际应用中，使用现成方法估计的光流图很少是可逆映射。（投影是信息有损的，没有良定义的逆映射）
+                - 对于因遮挡区域产生的**空洞**，我们用新采样的噪声值来替换这些缺失值。这样可以确保噪声图在这些区域仍然是合理的
+                - 在非常长的序列中，我们还会定期重新采样高分辨率噪声，这实际上相当于更新了锚定帧。这样做可以避免长时间序列中累积的误差。
+
 ## RLHF
 
 ### PRM 
