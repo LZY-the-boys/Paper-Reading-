@@ -519,6 +519,16 @@ $$
 
 ## Image-Tokenizer
 
+
+## VLM
+- [ [ICLR25] MLLMs Know Where to Look](https://arxiv.org/abs/2502.17422)
+	- review score 885
+	- insight：vqa中可能prompt对应的仅仅是图上很小一部分，attn score不够
+	- 就是先forward一遍，得到文图attention-map，然后用这个map得到一个bbox（crop img）作为增强特征，和原有的img concat在一起，做生成
+	- 缺陷：多一次forward
+- [[NIPS24] Control LLM](https://arxiv.org/abs/2407.21534v6)
+	- 在inference的时候，通过T次forward （貌似用一个energy function）优化额外加的prompt
+
 ## Interpretable
 
 - [ACL25] https://arxiv.org/pdf/2410.23743  正文8页但是附录有123页
